@@ -29,8 +29,9 @@ showNotification("Script Purpose", "This script is for bypassing Tower of Hell's
 local eventHistory = {}
 
 local function logEvent(message)
-    print("[Tower of Hell Bypass] " .. message)
-    table.insert(eventHistory, os.date("%Y-%m-%d %H:%M:%S") .. ": " .. message)
+    local timestamp = os.date("%Y-%m-%d %H:%M:%S")
+    print(("[Tower of Hell Bypass] %s"):format(message))
+    table.insert(eventHistory, ("%s: %s"):format(timestamp, message))
 end
 
 -- Function to display event history
@@ -62,29 +63,24 @@ local mainTab = Window:CreateTab("Main")
 local creditsTab = Window:CreateTab("Credits")
 
 -- Main Tab UI Elements
-local enableButton = mainTab:CreateButton("Enable Bypass", function()
+mainTab:CreateButton("Enable Bypass", function()
     setupBypass()
     showNotification("Bypass Enabled", "Tower of Hell bypass is now active.")
 end)
 
-local disableButton = mainTab:CreateButton("Disable Bypass", function()
+mainTab:CreateButton("Disable Bypass", function()
     userPreferences.bypassEnabled = false
     showNotification("Bypass Disabled", "The Tower of Hell bypass has been disabled. Please reload the game.")
 end)
 
-local updateButton = mainTab:CreateButton("Check for Updates", function()
-    checkForUpdates()
-end)
+mainTab:CreateButton("Check for Updates", checkForUpdates)
 
-local feedbackButton = mainTab:CreateButton("Send Feedback", function()
-    local userFeedback = "Feedback sent! Thank you for your input!"
-    showNotification("Feedback", userFeedback)
+mainTab:CreateButton("Send Feedback", function()
+    showNotification("Feedback", "Feedback sent! Thank you for your input!")
     logEvent("User feedback sent.")
 end)
 
-local historyButton = mainTab:CreateButton("View Event History", function()
-    displayEventHistory()
-end)
+mainTab:CreateButton("View Event History", displayEventHistory)
 
 -- Credits Tab UI Elements
 creditsTab:CreateLabel("Credits")
@@ -96,71 +92,35 @@ local function setupBypass()
     -- Check for updates
     checkForUpdates()
 
-    -- Namecall hook to bypass kicks, bans, and server event detection
-    local success, err = pcall(function()
-        local oldNamecall
-        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-            local method = getnamecallmethod()
-            if method == "Kick" or method == "Ban" or method == "FireServer" then
-                return nil -- Block Kick, Ban, FireServer events
-            end
-            return oldNamecall(self, ...)
+    -- Hook to bypass kicks, bans, and server event detection
+    local function safeHook(func, hookFunc)
+        local success, err = pcall(function()
+            return hookfunc(func, hookFunc)
         end)
-    end)
-
-    if not success then
-        showNotification("Error in Namecall Hook", err)
-    else
-        showNotification("Namecall Hook", "Successfully hooked __namecall.")
-        logEvent("Namecall hook installed successfully.")
+        if not success then
+            showNotification("Error Hooking Function", err)
+        end
     end
 
-    -- Hook function to block Player.Kick function (prevents being kicked)
-    local success, err = pcall(function()
-        local oldKick = hookfunction(game.Players.LocalPlayer.Kick, function(...)
-            return -- Block the kick function completely
-        end)
+    -- Hook Player.Kick to prevent being kicked
+    safeHook(game.Players.LocalPlayer.Kick, function() end)
+
+    -- Hook __namecall to prevent server detection methods
+    safeHook(hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        if method == "Kick" or method == "Ban" or method == "FireServer" then
+            return nil -- Block Kick, Ban, FireServer events
+        end
+        return oldNamecall(self, ...)
+    end), function() end)
+
+    -- Hook to manipulate iterator behavior and avoid detection
+    safeHook(ipairs, function(t)
+        return oldI, function(t, i)
+            local v = oldI(t, i)
+            return i, v -- Customize iterator behavior if necessary
+        end
     end)
-
-    if not success then
-        showNotification("Error in Kick Hook", err)
-    else
-        showNotification("Kick Hook", "Successfully hooked Player.Kick.")
-        logEvent("Kick hook installed successfully.")
-    end
-
-    -- Lua registry hook to block sensitive variables
-    local success, err = pcall(function()
-        local registryHook = debug.getregistry()
-        local oldNewIndexRegistry = hookmetamethod(registryHook, "__newindex", function(self, index, value)
-            return oldNewIndexRegistry(self, index, value)
-        end)
-    end)
-
-    if not success then
-        showNotification("Error in Registry Hook", err)
-    else
-        showNotification("Registry Hook", "Successfully hooked __newindex.")
-        logEvent("Registry hook installed successfully.")
-    end
-
-    -- Hook ipairs to manipulate iterator behavior and avoid detection
-    local success, err = pcall(function()
-        local oldI = ipairs
-        hookfunction(ipairs, function(t)
-            return oldI, function(t, i)
-                local v = oldI(t, i)
-                return i, v -- Customize iterator behavior if necessary
-            end
-        end)
-    end)
-
-    if not success then
-        showNotification("Error in ipairs Hook", err)
-    else
-        showNotification("ipairs Hook", "Successfully hooked ipairs.")
-        logEvent("ipairs hook installed successfully.")
-    end
 
     -- Set user preferences
     userPreferences.bypassEnabled = true
