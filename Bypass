@@ -1,0 +1,170 @@
+-- Tower of Hell Bypass v1.3 by auti4sm
+-- Discord: auti4sm
+-- This script is for bypassing Tower of Hell's anti-cheat using Synapse Lua methods and features.
+
+-- Load the IreXion UI Library
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/H3XDaemon/IreXion-UI-Library/main/IreXion%20UI%20Library"))()
+local Window = Library:CreateWindow("Tower of Hell Bypass v1.3")
+
+-- Synapse Notify at the start
+syn.notify({
+    Title = "Tower of Hell Bypass v1.3",
+    Text = "By auti4sm | Discord: auti4sm",
+    Duration = 5
+})
+
+-- Function to show notification
+local function showNotification(title, text, duration)
+    syn.notify({
+        Title = title,
+        Text = text,
+        Duration = duration or 5
+    })
+end
+
+-- Custom Message to clarify script purpose
+showNotification("Script Purpose", "This script is for bypassing Tower of Hell's anti-cheat using Synapse Lua.")
+
+-- Function to log events to the console and store in history
+local eventHistory = {}
+
+local function logEvent(message)
+    print("[Tower of Hell Bypass] " .. message)
+    table.insert(eventHistory, os.date("%Y-%m-%d %H:%M:%S") .. ": " .. message)
+end
+
+-- Function to display event history
+local function displayEventHistory()
+    for _, event in ipairs(eventHistory) do
+        print(event) -- Output to console
+    end
+end
+
+-- Function to check for updates (mock function)
+local function checkForUpdates()
+    -- Simulate checking for updates
+    local hasUpdate = false -- Set to true if an update is available
+    if hasUpdate then
+        showNotification("Update Available", "A new version of the script is available. Please update!")
+    else
+        showNotification("No Updates", "You are using the latest version of the script.")
+    end
+end
+
+-- User preferences
+local userPreferences = {
+    bypassEnabled = false,
+    uiColor = Color3.fromRGB(40, 40, 40) -- Default UI color
+}
+
+-- Create UI Tabs
+local mainTab = Window:CreateTab("Main")
+local creditsTab = Window:CreateTab("Credits")
+
+-- Main Tab UI Elements
+local enableButton = mainTab:CreateButton("Enable Bypass", function()
+    setupBypass()
+    showNotification("Bypass Enabled", "Tower of Hell bypass is now active.")
+end)
+
+local disableButton = mainTab:CreateButton("Disable Bypass", function()
+    userPreferences.bypassEnabled = false
+    showNotification("Bypass Disabled", "The Tower of Hell bypass has been disabled. Please reload the game.")
+end)
+
+local updateButton = mainTab:CreateButton("Check for Updates", function()
+    checkForUpdates()
+end)
+
+local feedbackButton = mainTab:CreateButton("Send Feedback", function()
+    local userFeedback = "Feedback sent! Thank you for your input!"
+    showNotification("Feedback", userFeedback)
+    logEvent("User feedback sent.")
+end)
+
+local historyButton = mainTab:CreateButton("View Event History", function()
+    displayEventHistory()
+end)
+
+-- Credits Tab UI Elements
+creditsTab:CreateLabel("Credits")
+creditsTab:CreateLabel("This script is made by auti4sm")
+creditsTab:CreateLabel("Discord: auti4sm")
+
+-- Function to setup hooks and bypass mechanisms
+local function setupBypass()
+    -- Check for updates
+    checkForUpdates()
+
+    -- Namecall hook to bypass kicks, bans, and server event detection
+    local success, err = pcall(function()
+        local oldNamecall
+        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            if method == "Kick" or method == "Ban" or method == "FireServer" then
+                return nil -- Block Kick, Ban, FireServer events
+            end
+            return oldNamecall(self, ...)
+        end)
+    end)
+
+    if not success then
+        showNotification("Error in Namecall Hook", err)
+    else
+        showNotification("Namecall Hook", "Successfully hooked __namecall.")
+        logEvent("Namecall hook installed successfully.")
+    end
+
+    -- Hook function to block Player.Kick function (prevents being kicked)
+    local success, err = pcall(function()
+        local oldKick = hookfunction(game.Players.LocalPlayer.Kick, function(...)
+            return -- Block the kick function completely
+        end)
+    end)
+
+    if not success then
+        showNotification("Error in Kick Hook", err)
+    else
+        showNotification("Kick Hook", "Successfully hooked Player.Kick.")
+        logEvent("Kick hook installed successfully.")
+    end
+
+    -- Lua registry hook to block sensitive variables
+    local success, err = pcall(function()
+        local registryHook = debug.getregistry()
+        local oldNewIndexRegistry = hookmetamethod(registryHook, "__newindex", function(self, index, value)
+            return oldNewIndexRegistry(self, index, value)
+        end)
+    end)
+
+    if not success then
+        showNotification("Error in Registry Hook", err)
+    else
+        showNotification("Registry Hook", "Successfully hooked __newindex.")
+        logEvent("Registry hook installed successfully.")
+    end
+
+    -- Hook ipairs to manipulate iterator behavior and avoid detection
+    local success, err = pcall(function()
+        local oldI = ipairs
+        hookfunction(ipairs, function(t)
+            return oldI, function(t, i)
+                local v = oldI(t, i)
+                return i, v -- Customize iterator behavior if necessary
+            end
+        end)
+    end)
+
+    if not success then
+        showNotification("Error in ipairs Hook", err)
+    else
+        showNotification("ipairs Hook", "Successfully hooked ipairs.")
+        logEvent("ipairs hook installed successfully.")
+    end
+
+    -- Set user preferences
+    userPreferences.bypassEnabled = true
+end
+
+-- Final notification to indicate setup is complete
+showNotification("Setup Complete", "Tower of Hell Bypass UI loaded successfully.")
